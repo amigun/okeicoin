@@ -8,6 +8,7 @@ class User(Model):
     user_group = TextField()
     pay_account = TextField()
     user_balance = IntegerField()
+    user_status = IntegerField()
 
     class Meta:
         database = db

@@ -1,5 +1,9 @@
 import datetime
 import configparser
+import cv2
+import numpy as np
+from pyzbar import pyzbar
+from io import BytesIO
 from aiogram import Bot
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
@@ -12,6 +16,7 @@ import fsm
 config = configparser.ConfigParser()
 config.read('../config.ini')
 bot = Bot(token=config['Telegram']['bot_token'])
+admin_access = config['private']['admin_access']
 
 async def start(msg: types.Message, state: FSMContext):
     if db_queries.check_auth(msg.from_user.id) == msg.from_user.id:
@@ -22,10 +27,31 @@ async def start(msg: types.Message, state: FSMContext):
         await msg.answer(messages.get['enter_name'])
         await fsm.AllStates.get_name.set()
 
+async def getadmin(msg: types.Message, state: FSMContext):
+    await msg.answer(messages.get['send_qr_for_getadmin'])
+
+    await fsm.AllStates.get_qr_for_getadmin.set()
+
+async def get_qr_for_getadmin(msg: types.Message, state: FSMContext):
+    photo = await msg.photo[0].get_file()
+    photo_download = await photo.download(destination=BytesIO())
+    
+    barcodes = pyzbar.decode(cv2.imdecode(np.asarray(bytearray(photo_download.read()), dtype='uint8'), cv2.IMREAD_COLOR))
+
+    try:
+        barcodeData = barcodes[0].data.decode('utf-8')
+        if barcodeData == admin_access:
+            db_queries.to_become_admin(msg.from_user.id)
+            await msg.answer(messages.get['you_are_admin'])
+        else:
+            await msg.answer(messages.get['qr_is_error'])
+    except IndexError:
+        await msg.answer(messages.get['qr_is_not_found'])
+
 async def menu(msg: types.Message, state: FSMContext):
     if msg.text == messages.buttons['help']:
         await msg.answer(messages.get['help'])
-    if msg.text == messages.buttons['profile']:
+    elif msg.text == messages.buttons['profile']:
         await msg.answer(messages.get['profile'].format(*db_queries.get_info(msg.from_user.id)), parse_mode="MarkdownV2", reply_markup=keyboards.profile__kb)
 
 async def profile_inline(call: types.CallbackQuery):
@@ -100,6 +126,8 @@ async def get_group(msg: types.Message, state: FSMContext):
 
 def register_handlers(dp: Dispatcher):
     dp.register_message_handler(start, commands=['start'], state='*')
+    dp.register_message_handler(getadmin, commands=['getadmin'], state='*')
+    dp.register_message_handler(get_qr_for_getadmin, content_types=['photo'], state=fsm.AllStates.get_qr_for_getadmin)
     dp.register_message_handler(enter_pay_account_to_transfer, state=fsm.AllStates.enter_pay_account_to_transfer)
     dp.register_message_handler(enter_count_if_okeicoins, state=fsm.AllStates.enter_count_if_okeicoins)
     dp.register_message_handler(enter_count_of_coins, state=fsm.AllStates.enter_count_of_coins)

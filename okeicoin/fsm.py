@@ -7,3 +7,4 @@ class AllStates(StatesGroup):
     enter_count_of_coins = State()
     enter_pay_account_to_transfer = State()
     enter_count_if_okeicoins = State()
+    get_qr_for_getadmin = State()
