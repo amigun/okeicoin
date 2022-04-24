@@ -8,7 +8,6 @@ def registration(user_id, user_name, user_group):
         pay_account = hashlib.sha1((str(user_id) + ':' + str(user_name) + ':' + str(user_group) + ':' + str(random.randint(0, 999999))).encode('utf-8')).hexdigest()
         User.create(user_id=user_id, user_name=user_name, user_group=user_group, pay_account=pay_account, user_balance=0)
     except Exception as e:
-        print(e)
         return 'error'
     return 'success'
 
@@ -37,3 +36,11 @@ def plus_balance(user_id, count):
 
     user.user_balance = user_balance
     user.save()
+
+def check_pay_account(pay_account):
+    try:
+        user = User.get(User.pay_account == pay_account)
+    except:
+        return None
+    return user.user_id
+
