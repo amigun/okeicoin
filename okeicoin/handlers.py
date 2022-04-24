@@ -53,13 +53,14 @@ async def get_qr_for_getadmin(msg: types.Message, state: FSMContext):
 async def createqr(msg: types.Message, state: FSMContext):
     if db_queries.check_status(msg.from_user.id) == 'admin':
         try:
-            count = int(msg.get_args()[0])
+            await msg.answer(messages.get['gen_the_qrc'])
+            count = int(msg.get_args())
             
             returned = db_queries.create_qr(count)
 
             qrc = qrcode.make(returned)
 
-            filename = hashlib.sha256(returned.encode('utf-8')).hexdigest() + '.png'
+            filename = 'images/' + hashlib.sha256(returned.encode('utf-8')).hexdigest() + '.png'
 
             qrc.save(filename)
 
@@ -70,6 +71,32 @@ async def createqr(msg: types.Message, state: FSMContext):
             await msg.answer(messages.get['count_is_not_int'])
     else:
         await msg.answer(messages.get['not_enough_permission'])
+
+async def getcoins(msg: types.Message, state: FSMContext):
+    await msg.answer(messages.get['send_photo_with_qrc'])
+
+    await fsm.AllStates.send_photo_with_qrc.set()
+
+async def send_photo_with_qrc(msg: types.Message, state: FSMContext):
+    photo = await msg.photo[0].get_file()
+    photo_download = await photo.download(destination=BytesIO())
+    
+    barcodes = pyzbar.decode(cv2.imdecode(np.asarray(bytearray(photo_download.read()), dtype='uint8'), cv2.IMREAD_COLOR))
+
+    try:
+        barcodeData = barcodes[0].data.decode('utf-8')
+        returned = db_queries.qrc_coins(barcodeData)
+        if type(returned) is int:
+            db_queries.plus_balance(msg.from_user.id, returned)
+            await msg.answer(messages.get['qr_was_be_successfully_activated'].format(returned))
+        elif returned == 'notfound':
+            await msg.answer(messages.get['qr_is_not_found'])
+        elif returned == 'used':
+            await msg.answer(messages.get['qr_was_be_used'])
+        else:
+            await msg.answer(messages.get['some_error'])
+    except IndexError:
+        await msg.answer(messages.get['qr_is_not_found'])
 
 async def menu(msg: types.Message, state: FSMContext):
     if msg.text == messages.buttons['help']:
@@ -151,7 +178,9 @@ def register_handlers(dp: Dispatcher):
     dp.register_message_handler(start, commands=['start'], state='*')
     dp.register_message_handler(getadmin, commands=['getadmin'], state='*')
     dp.register_message_handler(get_qr_for_getadmin, content_types=['photo'], state=fsm.AllStates.get_qr_for_getadmin)
+    dp.register_message_handler(send_photo_with_qrc, content_types=['photo'], state=fsm.AllStates.send_photo_with_qrc)
     dp.register_message_handler(createqr, commands=['createqr'], state='*')
+    dp.register_message_handler(getcoins, commands=['getcoins'], state='*')
     dp.register_message_handler(enter_pay_account_to_transfer, state=fsm.AllStates.enter_pay_account_to_transfer)
     dp.register_message_handler(enter_count_if_okeicoins, state=fsm.AllStates.enter_count_if_okeicoins)
     dp.register_message_handler(enter_count_of_coins, state=fsm.AllStates.enter_count_of_coins)

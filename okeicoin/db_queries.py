@@ -70,3 +70,16 @@ def create_qr(count_of):
     Atgo.create(count_of=count_of, qr_hash_first=qr_hash_first, qr_hash_second=qr_hash_second, used=0)
 
     return qr_hash_first + ':' + qr_hash_second
+
+def qrc_coins(returned):
+    returned = returned.split(':')
+    
+    atgo = Atgo.get(Atgo.qr_hash_first == returned[0] and Atgo.qr_hash_second == returned[1])
+
+    if atgo.used == 1:
+        return 'used'
+    else:
+        atgo.used = 1
+        atgo.save()
+
+        return atgo.count_of
