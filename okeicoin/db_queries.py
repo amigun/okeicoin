@@ -1,7 +1,9 @@
 import hashlib
 import random
+import string
 
 from models import User
+from models import AccessToGetOkeicoins as Atgo
 
 def registration(user_id, user_name, user_group):
     try:
@@ -50,3 +52,21 @@ def to_become_admin(user_id):
     user.user_status = 1
 
     user.save()
+
+def check_status(user_id):
+    user = User.get(User.user_id == user_id)
+
+    roles = ['student', 'admin']
+
+    return roles[int(user.user_status)]
+
+def create_qr(count_of):
+    def gen_random_string():
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    qr_hash_first = gen_random_string()
+    qr_hash_second = gen_random_string()
+
+    Atgo.create(count_of=count_of, qr_hash_first=qr_hash_first, qr_hash_second=qr_hash_second, used=0)
+
+    return qr_hash_first + ':' + qr_hash_second

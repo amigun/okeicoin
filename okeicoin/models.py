@@ -13,4 +13,14 @@ class User(Model):
     class Meta:
         database = db
 
+class AccessToGetOkeicoins(Model):
+    count_of = IntegerField()
+    qr_hash_first = TextField()
+    qr_hash_second = TextField()
+    used = IntegerField()
+
+    class Meta:
+        database = db
+
 User.create_table()
+AccessToGetOkeicoins.create_table()

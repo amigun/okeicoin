@@ -1,5 +1,7 @@
 import datetime
 import configparser
+import qrcode
+import hashlib
 import cv2
 import numpy as np
 from pyzbar import pyzbar
@@ -47,6 +49,27 @@ async def get_qr_for_getadmin(msg: types.Message, state: FSMContext):
             await msg.answer(messages.get['qr_is_error'])
     except IndexError:
         await msg.answer(messages.get['qr_is_not_found'])
+
+async def createqr(msg: types.Message, state: FSMContext):
+    if db_queries.check_status(msg.from_user.id) == 'admin':
+        try:
+            count = int(msg.get_args()[0])
+            
+            returned = db_queries.create_qr(count)
+
+            qrc = qrcode.make(returned)
+
+            filename = hashlib.sha256(returned.encode('utf-8')).hexdigest() + '.png'
+
+            qrc.save(filename)
+
+            await bot.send_photo(msg.from_user.id, photo=open(filename, 'rb'))
+        except IndexError:
+            await msg.answer(messages.get['enter_count_of_okeicoins'])
+        except ValueError:
+            await msg.answer(messages.get['count_is_not_int'])
+    else:
+        await msg.answer(messages.get['not_enough_permission'])
 
 async def menu(msg: types.Message, state: FSMContext):
     if msg.text == messages.buttons['help']:
@@ -128,6 +151,7 @@ def register_handlers(dp: Dispatcher):
     dp.register_message_handler(start, commands=['start'], state='*')
     dp.register_message_handler(getadmin, commands=['getadmin'], state='*')
     dp.register_message_handler(get_qr_for_getadmin, content_types=['photo'], state=fsm.AllStates.get_qr_for_getadmin)
+    dp.register_message_handler(createqr, commands=['createqr'], state='*')
     dp.register_message_handler(enter_pay_account_to_transfer, state=fsm.AllStates.enter_pay_account_to_transfer)
     dp.register_message_handler(enter_count_if_okeicoins, state=fsm.AllStates.enter_count_if_okeicoins)
     dp.register_message_handler(enter_count_of_coins, state=fsm.AllStates.enter_count_of_coins)
